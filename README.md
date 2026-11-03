@@ -1,6 +1,11 @@
+<p align="center"><img src="docs/brand/banner.webp" alt="BugHunterr: a friendly tuyul, the little ghost of Indonesian folklore, catches a red bug with a magnifying glass over a browser window. An AI agent hunts bugs in your web app, and proves every one." width="100%"></p>
+
 # BugHunterr
 
 **An AI agent hunts bugs in your web app, and proves every one it finds.**
+
+> The mascot is a *tuyul*, the small bald spirit of Indonesian folklore who sneaks into houses to steal coins. This
+> one has changed sides: it sneaks into your app and steals the bugs.
 
 BugHunterr starts Claude Code or Codex with what a human tester has: a real browser (Playwright), the source code
 (read-only), the database (read-only), and a shell. It tests either **guided** by your spec (a PRD) or

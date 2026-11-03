@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BugHunterr Board</title>
+<style>
+  :root {
+    --bg: #f8fafc; --panel: #ffffff; --ink: #0f172a; --muted: #64748b; --line: #e2e8f0; --brand: #b91c1c;
+    --amber: #b45309; --amber-bg: #fef3c7; --red: #b91c1c; --red-bg: #fee2e2; --green: #15803d; --green-bg: #dcfce7; --blue: #1d4ed8; --blue-bg: #dbeafe;
+    --code: #f1f5f9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0b1120; --panel: #111827; --ink: #e2e8f0; --muted: #94a3b8; --line: #1f2a3d; --brand: #f87171;
+      --amber: #fbbf24; --amber-bg: #3a2a0a; --red: #fca5a5; --red-bg: #3b1212; --green: #86efac; --green-bg: #0f2e1b; --blue: #93c5fd; --blue-bg: #13233f;
+      --code: #0f172a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b1120; --panel: #111827; --ink: #e2e8f0; --muted: #94a3b8; --line: #1f2a3d; --brand: #f87171;
+    --amber: #fbbf24; --amber-bg: #3a2a0a; --red: #fca5a5; --red-bg: #3b1212; --green: #86efac; --green-bg: #0f2e1b; --blue: #93c5fd; --blue-bg: #13233f;
+    --code: #0f172a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { display: flex; align-items: center; gap: 16px; padding: 14px 24px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 2; }
+  header h1 { font-size: 17px; margin: 0; }
+  header h1 .mark { color: var(--brand); }
+  .sub { color: var(--muted); font-size: 12px; }
+  nav.tabs { display: flex; gap: 4px; margin-left: auto; }
+  nav.tabs button { border: 1px solid var(--line); background: transparent; color: var(--ink); padding: 6px 14px; border-radius: 8px; font: inherit; cursor: pointer; }
+  nav.tabs button[aria-selected="true"] { background: var(--brand); border-color: var(--brand); color: var(--bg); font-weight: 600; }
+  main { padding: 20px 24px 48px; max-width: 1400px; margin: 0 auto; }
+  .banner { display: flex; flex-wrap: wrap; gap: 10px 24px; align-items: center; padding: 12px 16px; border-radius: 10px; margin-bottom: 18px; border: 1px solid var(--line); background: var(--panel); border-left: 5px solid var(--green); }
+  .banner.incomplete { border-left-color: var(--amber); }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .sev-critical { background: var(--red); color: var(--bg); } .sev-high { background: var(--red-bg); color: var(--red); }
+  .sev-medium { background: var(--amber-bg); color: var(--amber); } .sev-low { background: var(--blue-bg); color: var(--blue); }
+  .good { background: var(--green-bg); color: var(--green); } .warn { background: var(--amber-bg); color: var(--amber); }
+  .bad { background: var(--red-bg); color: var(--red); } .info { background: var(--blue-bg); color: var(--blue); } .plain { background: var(--code); color: var(--muted); }
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .filters select, .filters input { font: inherit; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); }
+  .filters input { min-width: 200px; flex: 1; }
+  .split { display: grid; grid-template-columns: minmax(280px, 400px) 1fr; gap: 18px; align-items: start; }
+  .list { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--panel); }
+  .list button { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); padding: 10px 14px; font: inherit; cursor: pointer; }
+  .list button:last-child { border-bottom: 0; }
+  .list button[aria-current="true"] { background: var(--code); box-shadow: inset 4px 0 0 var(--brand); }
+  .list .id { font-weight: 700; margin-right: 6px; }
+  .meta { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; align-items: center; }
+  .detail { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); padding: 18px 22px; min-height: 300px; min-width: 0; }
+  .detail h2 { margin: 0 0 6px; font-size: 19px; }
+  h3 { margin: 18px 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  video { width: 100%; max-height: 440px; border-radius: 8px; background: #000; margin-top: 10px; }
+  .kv { display: grid; grid-template-columns: 130px 1fr; gap: 4px 12px; }
+  .kv dt { color: var(--muted); } .kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+  ol { padding-left: 20px; margin: 4px 0; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; }
+  pre { background: var(--code); padding: 12px 14px; border-radius: 8px; overflow: auto; white-space: pre-wrap; max-height: 420px; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .btn { border: 0; background: var(--brand); color: var(--bg); padding: 8px 14px; border-radius: 8px; font: inherit; font-weight: 600; cursor: pointer; }
+  .btn.secondary { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  .copied { color: var(--green); font-weight: 600; }
+  .card { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); padding: 16px 20px; margin-bottom: 16px; }
+  .card h2 { margin: 0; font-size: 16px; }
+  details summary { cursor: pointer; color: var(--muted); margin-top: 10px; }
+  .empty { color: var(--muted); padding: 24px; text-align: center; }
+  footer { color: var(--muted); font-size: 12px; text-align: center; padding: 16px; }
+  @media (max-width: 860px) {
+    .split { grid-template-columns: 1fr; }
+    header { flex-wrap: wrap; padding: 12px 16px; }
+    nav.tabs { margin-left: 0; }
+    main { padding: 16px; }
+    .kv { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1><span class="mark">●</span> BugHunterr · <span id="app-name"></span></h1>
+    <div class="sub" id="generated"></div>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="bugs" aria-selected="true">Bugs</button>
+    <button role="tab" data-tab="sessions" aria-selected="false">Sessions</button>
+  </nav>
+</header>
+<main>
+  <div id="latest"></div>
+  <section id="tab-bugs">
+    <div class="filters">
+      <select id="f-sev" aria-label="Severity"><option value="">All severities</option><option>critical</option><option>high</option><option>medium</option><option>low</option></select>
+      <select id="f-state" aria-label="State"><option value="">All states</option><option selected>open</option><option>fixed</option><option>wontfix</option><option>by-design</option></select>
+      <select id="f-basis" aria-label="Basis"><option value="">Spec and inferred</option><option value="spec">Against the spec</option><option value="inferred">Inferred intent</option></select>
+      <input id="f-q" type="search" placeholder="Search title, area, rule…" aria-label="Search">
+    </div>
+    <div class="split">
+      <div class="list" id="bug-list"></div>
+      <article class="detail" id="bug-detail"></article>
+    </div>
+  </section>
+  <section id="tab-sessions" hidden></section>
+</main>
+<footer>Built by BugHunterr</footer>
+<script>
+(function () {
+  const DATA = /*__BOARD_DATA__*/null;
+  const $ = (s) => document.querySelector(s);
+  const el = (tag, attrs, ...kids) => {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (k === 'class') n.className = v;
+      else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+      else if (v !== undefined && v !== null && v !== false) n.setAttribute(k, v);
+    }
+    for (const kid of kids.flat()) if (kid !== null && kid !== undefined && kid !== false) n.append(kid.nodeType ? kid : String(kid));
+    return n;
+  };
+  const pill = (cls, text) => el('span', { class: 'pill ' + cls }, text);
+  const fmt = (iso) => (iso ? new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '–');
+  const proofPill = (p) => !p ? pill('plain', 'spec not run')
+    : p.proven === p.tests && p.tests ? pill('good', 'spec proves it')
+    : p.results.includes('possibly-fixed') ? pill('info', 'possibly fixed')
+    : pill('warn', 'spec unproven');
+  const confPill = (c) => pill(c === 'confirmed' ? 'bad' : c === 'likely' ? 'warn' : 'info', c);
+
+  $('#app-name').textContent = DATA.app;
+  document.title = DATA.app + ' · BugHunterr';
+  $('#generated').textContent = DATA.url + ' · board built ' + fmt(DATA.generated);
+
+  const latest = DATA.sessions[0];
+  if (latest) {
+    $('#latest').append(el('div', { class: 'banner' + (latest.status === 'complete' ? '' : ' incomplete') },
+      el('strong', {}, 'Latest hunt'), pill(latest.status === 'complete' ? 'good' : 'warn', latest.status),
+      el('span', {}, `${latest.mode} · ${latest.agent} · ${fmt(latest.started)} · ${latest.minutesUsed ?? '–'} min`),
+      el('span', {}, 'New bugs: ', el('strong', {}, (latest.newBugs || []).join(', ') || 'none')),
+      latest.possiblyFixed?.length ? el('span', {}, 'Possibly fixed: ', el('strong', {}, latest.possiblyFixed.join(', '))) : null));
+  }
+
+  const tabs = document.querySelectorAll('nav.tabs button');
+  function showTab(name) {
+    tabs.forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
+    for (const t of ['bugs', 'sessions']) $('#tab-' + t).hidden = t !== name;
+  }
+  tabs.forEach((b) => b.addEventListener('click', () => { showTab(b.dataset.tab); history.replaceState(null, '', '#' + b.dataset.tab); }));
+
+  let current = null;
+  function filtered() {
+    const sev = $('#f-sev').value, st = $('#f-state').value, basis = $('#f-basis').value, q = $('#f-q').value.toLowerCase();
+    return DATA.bugs.filter((b) => (!sev || b.sev === sev) && (!st || b.state === st) && (!basis || b.expected.basis === basis)
+      && (!q || [b.id, b.title, b.area, b.summary, b.expected.requirement].join(' ').toLowerCase().includes(q)));
+  }
+  function renderList() {
+    const list = filtered();
+    const box = $('#bug-list');
+    box.replaceChildren();
+    if (!list.length) box.append(el('div', { class: 'empty' }, DATA.bugs.length ? 'No bugs match these filters.' : 'No bugs yet. Run a hunt.'));
+    for (const b of list) {
+      box.append(el('button', { 'aria-current': String(current === b.id), 'data-bug': b.id, onclick: () => select(b.id) },
+        el('span', { class: 'id' }, b.id), b.title,
+        el('div', { class: 'meta' }, pill('sev-' + b.sev, b.sev), confPill(b.confidence), proofPill(b.proof), el('span', { class: 'sub' }, b.area))));
+    }
+    if (!list.some((b) => b.id === current)) { current = null; $('#bug-detail').replaceChildren(); }
+    if (!current && list[0]) select(list[0].id, true);
+  }
+  async function copy(text, note) {
+    try { await navigator.clipboard.writeText(text); } catch (e) {
+      const t = el('textarea', {}, text); document.body.append(t); t.select(); document.execCommand('copy'); t.remove();
+    }
+    note.textContent = 'Copied';
+    setTimeout(() => (note.textContent = ''), 2000);
+  }
+  function select(id, quiet) {
+    current = id;
+    const b = DATA.bugs.find((x) => x.id === id);
+    document.querySelectorAll('#bug-list button').forEach((n) => n.setAttribute('aria-current', String(n.dataset.bug === id)));
+    if (!quiet) history.replaceState(null, '', '#bug=' + id);
+    const d = $('#bug-detail');
+    d.replaceChildren();
+    if (!b) return;
+    const note = el('span', { class: 'copied', 'aria-live': 'polite' });
+    const basis = b.expected.basis === 'spec' ? `Spec ${b.expected.requirement || ''}` : 'Inferred intent';
+    d.append(
+      el('h2', {}, b.id + ' · ' + b.title),
+      el('div', { class: 'meta' }, pill('sev-' + b.sev, b.sev), confPill(b.confidence), pill(b.expected.basis === 'spec' ? 'info' : 'plain', basis), proofPill(b.proof), pill(b.state === 'open' ? 'bad' : 'good', b.state),
+        el('span', { class: 'sub' }, `${b.area} · found ${b.foundAt} · ${b.environment}`)),
+      el('p', {}, b.summary),
+      el('div', { class: 'actions' },
+        el('button', { class: 'btn', 'data-testid': 'copy-fix-prompt', onclick: () => copy(b.fixPrompt, note) }, 'Copy fix prompt'),
+        el('button', { class: 'btn secondary', onclick: () => { const p = d.querySelector('pre.prompt'); p.hidden = !p.hidden; } }, 'Show fix prompt'),
+        note),
+      el('pre', { class: 'prompt', hidden: true }, b.fixPrompt),
+      b.video ? el('video', { controls: true, preload: 'metadata', src: DATA.videoBase + b.video }) : el('p', { class: 'sub' }, 'No video recorded.'),
+      el('h3', {}, 'Steps'), el('ol', {}, b.steps.map((s) => el('li', {}, s))),
+      el('h3', {}, 'Expected vs actual'),
+      el('dl', { class: 'kv' },
+        el('dt', {}, 'Expected'), el('dd', {}, b.expected.text),
+        el('dt', {}, b.expected.basis === 'spec' ? 'Rule' : 'Evidence'), el('dd', {}, b.expected.basis === 'spec' ? `${b.expected.requirement || '–'}${b.expected.link ? ' · ' + b.expected.link : ''}` : b.expected.evidence),
+        el('dt', {}, 'Actual'), el('dd', {}, b.actual)),
+      el('h3', {}, 'Confirmed two ways'),
+      el('dl', { class: 'kv' },
+        el('dt', {}, 'Response'), el('dd', {}, el('code', {}, b.how.response)),
+        el('dt', {}, 'Stored state'), el('dd', {}, el('code', {}, b.how.state)),
+        b.how.byDesignCheck ? el('dt', {}, 'Not by design') : null, b.how.byDesignCheck ? el('dd', {}, b.how.byDesignCheck) : null),
+      el('h3', {}, 'Where'),
+      el('dl', { class: 'kv' },
+        el('dt', {}, 'Code'), el('dd', {}, b.where?.file ? el('code', {}, b.where.file + (b.where.function ? ' › ' + b.where.function : '') + (b.where.line ? ':' + b.where.line : '')) : 'not found'),
+        el('dt', {}, 'Regression spec'), el('dd', {}, b.spec ? el('code', {}, b.spec) : '–'),
+        el('dt', {}, 'Found in'), el('dd', {}, b.run)),
+    );
+  }
+  ['#f-sev', '#f-state', '#f-basis'].forEach((s) => $(s).addEventListener('change', renderList));
+  $('#f-q').addEventListener('input', renderList);
+
+  const box = $('#tab-sessions');
+  if (!DATA.sessions.length) box.append(el('div', { class: 'empty' }, 'No hunts yet.'));
+  for (const s of DATA.sessions) {
+    box.append(el('div', { class: 'card' },
+      el('h2', {}, s.run),
+      el('div', { class: 'meta' }, pill(s.status === 'complete' ? 'good' : 'warn', s.status), pill(s.mode === 'guided' ? 'info' : 'plain', s.mode), el('span', { class: 'sub' }, `${s.agent} · ${fmt(s.started)} · ${s.minutesUsed ?? '–'} of ${s.minutes} min`)),
+      el('dl', { class: 'kv', style: 'margin-top:10px' },
+        el('dt', {}, 'Focus'), el('dd', {}, s.focus || '–'),
+        el('dt', {}, 'New bugs'), el('dd', {}, (s.newBugs || []).join(', ') || 'none'),
+        el('dt', {}, 'Explored'), el('dd', {}, (s.explored || []).join(', ') || '–'),
+        el('dt', {}, 'Not explored'), el('dd', {}, (s.notExplored || []).join('; ') || '–'),
+        el('dt', {}, 'Suspicions'), el('dd', {}, (s.suspicions || []).join('; ') || '–'),
+        el('dt', {}, 'Problems'), el('dd', {}, (s.problems || []).length ? el('ul', {}, s.problems.map((p) => el('li', {}, p))) : 'none')),
+      s.rules ? el('details', {}, el('summary', {}, s.mode === 'guided' ? 'Rules from the spec' : 'Inferred spec'), el('pre', {}, s.rules)) : null,
+      s.notes ? el('details', {}, el('summary', {}, 'Session notes'), el('pre', {}, s.notes)) : null));
+  }
+
+  const h = location.hash.slice(1);
+  if (h === 'sessions') showTab('sessions');
+  renderList();
+  if (h.startsWith('bug=')) select(h.slice(4), true);
+})();
+</script>
+</body>
+</html>

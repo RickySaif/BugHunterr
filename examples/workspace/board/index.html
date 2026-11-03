@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BugHunterr Board</title>
+<style>
+  :root {
+    --bg: #f8fafc; --panel: #ffffff; --ink: #0f172a; --muted: #64748b; --line: #e2e8f0; --brand: #b91c1c;
+    --amber: #b45309; --amber-bg: #fef3c7; --red: #b91c1c; --red-bg: #fee2e2; --green: #15803d; --green-bg: #dcfce7; --blue: #1d4ed8; --blue-bg: #dbeafe;
+    --code: #f1f5f9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0b1120; --panel: #111827; --ink: #e2e8f0; --muted: #94a3b8; --line: #1f2a3d; --brand: #f87171;
+      --amber: #fbbf24; --amber-bg: #3a2a0a; --red: #fca5a5; --red-bg: #3b1212; --green: #86efac; --green-bg: #0f2e1b; --blue: #93c5fd; --blue-bg: #13233f;
+      --code: #0f172a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b1120; --panel: #111827; --ink: #e2e8f0; --muted: #94a3b8; --line: #1f2a3d; --brand: #f87171;
+    --amber: #fbbf24; --amber-bg: #3a2a0a; --red: #fca5a5; --red-bg: #3b1212; --green: #86efac; --green-bg: #0f2e1b; --blue: #93c5fd; --blue-bg: #13233f;
+    --code: #0f172a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { display: flex; align-items: center; gap: 16px; padding: 14px 24px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 2; }
+  header h1 { font-size: 17px; margin: 0; }
+  header h1 .mark { color: var(--brand); }
+  .sub { color: var(--muted); font-size: 12px; }
+  nav.tabs { display: flex; gap: 4px; margin-left: auto; }
+  nav.tabs button { border: 1px solid var(--line); background: transparent; color: var(--ink); padding: 6px 14px; border-radius: 8px; font: inherit; cursor: pointer; }
+  nav.tabs button[aria-selected="true"] { background: var(--brand); border-color: var(--brand); color: var(--bg); font-weight: 600; }
+  main { padding: 20px 24px 48px; max-width: 1400px; margin: 0 auto; }
+  .banner { display: flex; flex-wrap: wrap; gap: 10px 24px; align-items: center; padding: 12px 16px; border-radius: 10px; margin-bottom: 18px; border: 1px solid var(--line); background: var(--panel); border-left: 5px solid var(--green); }
+  .banner.incomplete { border-left-color: var(--amber); }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .sev-critical { background: var(--red); color: var(--bg); } .sev-high { background: var(--red-bg); color: var(--red); }
+  .sev-medium { background: var(--amber-bg); color: var(--amber); } .sev-low { background: var(--blue-bg); color: var(--blue); }
+  .good { background: var(--green-bg); color: var(--green); } .warn { background: var(--amber-bg); color: var(--amber); }
+  .bad { background: var(--red-bg); color: var(--red); } .info { background: var(--blue-bg); color: var(--blue); } .plain { background: var(--code); color: var(--muted); }
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .filters select, .filters input { font: inherit; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); }
+  .filters input { min-width: 200px; flex: 1; }
+  .split { display: grid; grid-template-columns: minmax(280px, 400px) 1fr; gap: 18px; align-items: start; }
+  .list { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--panel); }
+  .list button { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); padding: 10px 14px; font: inherit; cursor: pointer; }
+  .list button:last-child { border-bottom: 0; }
+  .list button[aria-current="true"] { background: var(--code); box-shadow: inset 4px 0 0 var(--brand); }
+  .list .id { font-weight: 700; margin-right: 6px; }
+  .meta { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; align-items: center; }
+  .detail { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); padding: 18px 22px; min-height: 300px; min-width: 0; }
+  .detail h2 { margin: 0 0 6px; font-size: 19px; }
+  h3 { margin: 18px 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  video { width: 100%; max-height: 440px; border-radius: 8px; background: #000; margin-top: 10px; }
+  .kv { display: grid; grid-template-columns: 130px 1fr; gap: 4px 12px; }
+  .kv dt { color: var(--muted); } .kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+  ol { padding-left: 20px; margin: 4px 0; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; }
+  pre { background: var(--code); padding: 12px 14px; border-radius: 8px; overflow: auto; white-space: pre-wrap; max-height: 420px; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .btn { border: 0; background: var(--brand); color: var(--bg); padding: 8px 14px; border-radius: 8px; font: inherit; font-weight: 600; cursor: pointer; }
+  .btn.secondary { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  .copied { color: var(--green); font-weight: 600; }
+  .card { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); padding: 16px 20px; margin-bottom: 16px; }
+  .card h2 { margin: 0; font-size: 16px; }
+  details summary { cursor: pointer; color: var(--muted); margin-top: 10px; }
+  .empty { color: var(--muted); padding: 24px; text-align: center; }
+  footer { color: var(--muted); font-size: 12px; text-align: center; padding: 16px; }
+  @media (max-width: 860px) {
+    .split { grid-template-columns: 1fr; }
+    header { flex-wrap: wrap; padding: 12px 16px; }
+    nav.tabs { margin-left: 0; }
+    main { padding: 16px; }
+    .kv { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1><span class="mark">●</span> BugHunterr · <span id="app-name"></span></h1>
+    <div class="sub" id="generated"></div>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="bugs" aria-selected="true">Bugs</button>
+    <button role="tab" data-tab="sessions" aria-selected="false">Sessions</button>
+  </nav>
+</header>
+<main>
+  <div id="latest"></div>
+  <section id="tab-bugs">
+    <div class="filters">
+      <select id="f-sev" aria-label="Severity"><option value="">All severities</option><option>critical</option><option>high</option><option>medium</option><option>low</option></select>
+      <select id="f-state" aria-label="State"><option value="">All states</option><option selected>open</option><option>fixed</option><option>wontfix</option><option>by-design</option></select>
+      <select id="f-basis" aria-label="Basis"><option value="">Spec and inferred</option><option value="spec">Against the spec</option><option value="inferred">Inferred intent</option></select>
+      <input id="f-q" type="search" placeholder="Search title, area, rule…" aria-label="Search">
+    </div>
+    <div class="split">
+      <div class="list" id="bug-list"></div>
+      <article class="detail" id="bug-detail"></article>
+    </div>
+  </section>
+  <section id="tab-sessions" hidden></section>
+</main>
+<footer>Built by BugHunterr</footer>
+<script>
+(function () {
+  const DATA = {"generated":"2026-11-03T04:03:48.556Z","app":"Acme Leave","url":"http://localhost:4310","bugs":[{"id":"AL-1","title":"Any employee can approve leave requests, including their own","sev":"critical","area":"approvals","summary":"The approve action checks nothing about who is calling it. Any logged-in employee can approve their own leave request or a colleague's, so the manager's approval step can be skipped completely.","steps":["Log in as ben@acme.example (employee)","POST /api/requests {start:'2031-05-06', end:'2031-05-06'} → pending request id N","POST /api/requests/N/approve as Ben","Also: log in as cleo@acme.example (employee) and POST /api/requests/M/approve on Ben's request M"],"expected":{"text":"HTTP 403 for anyone who is not a manager or who owns the request; request stays pending.","basis":"spec","requirement":"R4","link":"docs/prd.md#us-3-decide"},"actual":"HTTP 200, status becomes 'approved' with decided_by = the employee (Ben himself, or Cleo).","where":{"file":"src/leave.mjs","function":"approveRequest","line":60},"how":{"response":"POST /api/requests/1/approve as Ben → 200 {status:'approved', decided_by:2}; POST /api/requests/2/approve as Cleo → 200 {status:'approved', decided_by:3}","state":"SELECT status, decided_by FROM requests WHERE id IN (1,2) → approved/2 (Ben himself), approved/3 (Cleo, an employee)","byDesignCheck":"R4 says only a manager can approve and nobody can decide their own request; rejectRequest right below has exactly these checks, approveRequest lacks them."},"confidence":"confirmed","state":"open","hint":"In approveRequest add the same two checks as rejectRequest: role must be 'manager' (403) and req.user_id !== user.id (403).","spec":"specs/AL-1.spec.mjs","repro":"repro/AL-1.repro.mjs","environment":"local","foundAt":"2026-11-03","run":"20261103-105420-guided","video":"videos/AL-1-employee-approves-own-leave-request.webm","proof":{"tests":2,"proven":2,"results":["known-bug-open","known-bug-open"]},"fixPrompt":"Fix bug AL-1 in Acme Leave (the `acme-leave` code base).\n\n## The bug: Any employee can approve leave requests, including their own\nThe approve action checks nothing about who is calling it. Any logged-in employee can approve their own leave request or a colleague's, so the manager's approval step can be skipped completely.\n\nWhere: src/leave.mjs, function `approveRequest` (around line 60)\n\n## Why it is wrong\nRequirement R4 (docs/prd.md#us-3-decide): HTTP 403 for anyone who is not a manager or who owns the request; request stays pending.\nActual: HTTP 200, status becomes 'approved' with decided_by = the employee (Ben himself, or Cleo).\n\n## How it was confirmed\n- Response: POST /api/requests/1/approve as Ben → 200 {status:'approved', decided_by:2}; POST /api/requests/2/approve as Cleo → 200 {status:'approved', decided_by:3}\n- Stored state: SELECT status, decided_by FROM requests WHERE id IN (1,2) → approved/2 (Ben himself), approved/3 (Cleo, an employee)\n- Not by design: R4 says only a manager can approve and nobody can decide their own request; rejectRequest right below has exactly these checks, approveRequest lacks them.\n\n## Steps to reproduce\n1. Log in as ben@acme.example (employee)\n2. POST /api/requests {start:'2031-05-06', end:'2031-05-06'} → pending request id N\n3. POST /api/requests/N/approve as Ben\n4. Also: log in as cleo@acme.example (employee) and POST /api/requests/M/approve on Ben's request M\n\n## The fix\nIn approveRequest add the same two checks as rejectRequest: role must be 'manager' (403) and req.user_id !== user.id (403).\n\n## Done when\n- The regression spec `specs/AL-1.spec.mjs` (BugHunterr workspace) passes in strict mode: `bughunterr verify AL-1` reports it as possibly fixed.\n- The app's own test suite has a test for this rule.\n- No other behaviour changes."},{"id":"AL-2","title":"Leave length counts Saturdays and Sundays as leave days","sev":"high","area":"requests","summary":"The number of days of a request is counted in calendar days, so any request spanning a weekend charges the weekend too. Employees lose balance they are entitled to (a Fri–Mon request costs 4 days instead of 2).","steps":["Log in as ben@acme.example","POST /api/requests {start:'2030-03-08' (Fri), end:'2030-03-11' (Mon)}","Read the days field of the response and of the stored row"],"expected":{"text":"days = 2 (Fri 8 and Mon 11 March 2030; Sat 9 and Sun 10 not counted) — the spec's own example.","basis":"spec","requirement":"R2","link":"docs/prd.md#us-2-request-leave"},"actual":"days = 4. Also a Saturday-only or Sat–Sun request is accepted as 1 or 2 days instead of being refused (R3: at least one working day).","where":{"file":"src/leave.mjs","function":"countDays","line":14},"how":{"response":"POST /api/requests 2030-03-08..2030-03-11 → 201 {id:3, days:4}","state":"SELECT days FROM requests WHERE id = 3 → 4","byDesignCheck":"R2 states working days only and gives this exact example as 2 days."},"confidence":"confirmed","state":"open","hint":"Make countDays iterate the range and count only UTC weekdays 1–5; then refuse 0-day requests in createRequest (R3).","spec":"specs/AL-2.spec.mjs","repro":"repro/AL-2.repro.mjs","environment":"local","foundAt":"2026-11-03","run":"20261103-105420-guided","video":"videos/AL-2-weekend-days-are-charged-as-leave.webm","proof":{"tests":1,"proven":1,"results":["known-bug-open"]},"fixPrompt":"Fix bug AL-2 in Acme Leave (the `acme-leave` code base).\n\n## The bug: Leave length counts Saturdays and Sundays as leave days\nThe number of days of a request is counted in calendar days, so any request spanning a weekend charges the weekend too. Employees lose balance they are entitled to (a Fri–Mon request costs 4 days instead of 2).\n\nWhere: src/leave.mjs, function `countDays` (around line 14)\n\n## Why it is wrong\nRequirement R2 (docs/prd.md#us-2-request-leave): days = 2 (Fri 8 and Mon 11 March 2030; Sat 9 and Sun 10 not counted) — the spec's own example.\nActual: days = 4. Also a Saturday-only or Sat–Sun request is accepted as 1 or 2 days instead of being refused (R3: at least one working day).\n\n## How it was confirmed\n- Response: POST /api/requests 2030-03-08..2030-03-11 → 201 {id:3, days:4}\n- Stored state: SELECT days FROM requests WHERE id = 3 → 4\n- Not by design: R2 states working days only and gives this exact example as 2 days.\n\n## Steps to reproduce\n1. Log in as ben@acme.example\n2. POST /api/requests {start:'2030-03-08' (Fri), end:'2030-03-11' (Mon)}\n3. Read the days field of the response and of the stored row\n\n## The fix\nMake countDays iterate the range and count only UTC weekdays 1–5; then refuse 0-day requests in createRequest (R3).\n\n## Done when\n- The regression spec `specs/AL-2.spec.mjs` (BugHunterr workspace) passes in strict mode: `bughunterr verify AL-2` reports it as possibly fixed.\n- The app's own test suite has a test for this rule.\n- No other behaviour changes."},{"id":"AL-3","title":"Request with end date before start date is accepted with negative days","sev":"high","area":"requests","summary":"The app never checks that the end date is on or after the start date. A backwards range is saved with a negative day count; once approved it would add days to the employee's balance instead of using them.","steps":["Log in as ben@acme.example","POST /api/requests {start:'2032-03-11', end:'2032-03-08'}","Check the response and the stored row"],"expected":{"text":"HTTP 400 with a message; nothing saved.","basis":"spec","requirement":"R3","link":"docs/prd.md#us-2-request-leave"},"actual":"HTTP 201, request saved as pending with days = -2.","where":{"file":"src/leave.mjs","function":"createRequest","line":40},"how":{"response":"POST /api/requests 2032-03-11..2032-03-08 → 201 {id:4, days:-2, status:'pending'}","state":"SELECT days, status FROM requests WHERE id = 4 → -2, pending","byDesignCheck":"R3 explicitly requires end >= start with HTTP 400 and nothing saved."},"confidence":"confirmed","state":"open","hint":"In createRequest, throw HttpError(400) when end \u003c start (and when the working-day count is 0) before inserting.","spec":"specs/AL-3.spec.mjs","repro":"repro/AL-3.repro.mjs","environment":"local","foundAt":"2026-11-03","run":"20261103-105420-guided","video":"videos/AL-3-backwards-date-range-is-accepted.webm","proof":{"tests":1,"proven":1,"results":["known-bug-open"]},"fixPrompt":"Fix bug AL-3 in Acme Leave (the `acme-leave` code base).\n\n## The bug: Request with end date before start date is accepted with negative days\nThe app never checks that the end date is on or after the start date. A backwards range is saved with a negative day count; once approved it would add days to the employee's balance instead of using them.\n\nWhere: src/leave.mjs, function `createRequest` (around line 40)\n\n## Why it is wrong\nRequirement R3 (docs/prd.md#us-2-request-leave): HTTP 400 with a message; nothing saved.\nActual: HTTP 201, request saved as pending with days = -2.\n\n## How it was confirmed\n- Response: POST /api/requests 2032-03-11..2032-03-08 → 201 {id:4, days:-2, status:'pending'}\n- Stored state: SELECT days, status FROM requests WHERE id = 4 → -2, pending\n- Not by design: R3 explicitly requires end >= start with HTTP 400 and nothing saved.\n\n## Steps to reproduce\n1. Log in as ben@acme.example\n2. POST /api/requests {start:'2032-03-11', end:'2032-03-08'}\n3. Check the response and the stored row\n\n## The fix\nIn createRequest, throw HttpError(400) when end \u003c start (and when the working-day count is 0) before inserting.\n\n## Done when\n- The regression spec `specs/AL-3.spec.mjs` (BugHunterr workspace) passes in strict mode: `bughunterr verify AL-3` reports it as possibly fixed.\n- The app's own test suite has a test for this rule.\n- No other behaviour changes."},{"id":"AL-4","title":"Approving several pending requests pushes an employee's balance below zero","sev":"high","area":"approvals","summary":"The balance is only checked when a request is created, and pending requests are not counted. An employee can file several requests that each fit, and a manager can approve all of them, so the employee gets more than 20 days and the balance shows a negative number.","steps":["Log in as cleo@acme.example","POST /api/requests 2077-03-01..2077-03-15 (15 days) → id A","POST /api/requests 2077-05-01..2077-05-15 (15 days) → id B (accepted: pending A not counted)","Log in as ana@acme.example (manager); POST /api/requests/A/approve then /B/approve","GET /api/balance?year=2077 as Cleo"],"expected":{"text":"The second approval is refused because it exceeds the remaining balance (20 − 15 = 5); remaining never goes below 0.","basis":"spec","requirement":"R7","link":"docs/prd.md#us-2-request-leave"},"actual":"Both approvals return 200; balance for 2077 is {used: 30, remaining: -10}.","where":{"file":"src/leave.mjs","function":"approveRequest","line":60},"how":{"response":"POST /api/requests/17/approve → 200, POST /api/requests/18/approve → 200; GET /api/balance?year=2077 → {used:30, remaining:-10}","state":"SELECT SUM(days) FROM requests WHERE user_id=3 AND status='approved' AND start_date LIKE '2077%' → 30","byDesignCheck":"R1 caps entitlement at 20 days per year and R7 forbids requests longer than the remaining balance; R5 defines remaining from approved requests, so the cap must hold at approval time. Not the same cause as AL-2 (day counting) or AL-1 (who may approve): here a real manager approves."},"confidence":"confirmed","state":"open","hint":"In approveRequest, re-compute balance(db, req.user_id, year) and refuse (400/409) when req.days > remaining.","spec":"specs/AL-4.spec.mjs","repro":"repro/AL-4.repro.mjs","environment":"local","foundAt":"2026-11-03","run":"20261103-105420-guided","video":"videos/AL-4-approvals-push-balance-below-zero.webm","proof":{"tests":1,"proven":1,"results":["known-bug-open"]},"fixPrompt":"Fix bug AL-4 in Acme Leave (the `acme-leave` code base).\n\n## The bug: Approving several pending requests pushes an employee's balance below zero\nThe balance is only checked when a request is created, and pending requests are not counted. An employee can file several requests that each fit, and a manager can approve all of them, so the employee gets more than 20 days and the balance shows a negative number.\n\nWhere: src/leave.mjs, function `approveRequest` (around line 60)\n\n## Why it is wrong\nRequirement R7 (docs/prd.md#us-2-request-leave): The second approval is refused because it exceeds the remaining balance (20 − 15 = 5); remaining never goes below 0.\nActual: Both approvals return 200; balance for 2077 is {used: 30, remaining: -10}.\n\n## How it was confirmed\n- Response: POST /api/requests/17/approve → 200, POST /api/requests/18/approve → 200; GET /api/balance?year=2077 → {used:30, remaining:-10}\n- Stored state: SELECT SUM(days) FROM requests WHERE user_id=3 AND status='approved' AND start_date LIKE '2077%' → 30\n- Not by design: R1 caps entitlement at 20 days per year and R7 forbids requests longer than the remaining balance; R5 defines remaining from approved requests, so the cap must hold at approval time. Not the same cause as AL-2 (day counting) or AL-1 (who may approve): here a real manager approves.\n\n## Steps to reproduce\n1. Log in as cleo@acme.example\n2. POST /api/requests 2077-03-01..2077-03-15 (15 days) → id A\n3. POST /api/requests 2077-05-01..2077-05-15 (15 days) → id B (accepted: pending A not counted)\n4. Log in as ana@acme.example (manager); POST /api/requests/A/approve then /B/approve\n5. GET /api/balance?year=2077 as Cleo\n\n## The fix\nIn approveRequest, re-compute balance(db, req.user_id, year) and refuse (400/409) when req.days > remaining.\n\n## Done when\n- The regression spec `specs/AL-4.spec.mjs` (BugHunterr workspace) passes in strict mode: `bughunterr verify AL-4` reports it as possibly fixed.\n- The app's own test suite has a test for this rule.\n- No other behaviour changes."}],"sessions":[{"run":"20261103-105420-guided","mode":"guided","agent":"claude","focus":null,"minutes":15,"started":"2026-11-03T03:54:20.334Z","status":"complete","url":"http://localhost:4310","finished":"2026-11-03T04:01:14.455Z","minutesUsed":6.9,"newBugs":["AL-1","AL-2","AL-3","AL-4"],"possiblyFixed":[],"explored":["approvals","permissions","day counting","balance","request validation","privacy"],"notExplored":["interactive browser mapping with network capture","UI balance card vs API consistency","concurrent decisions","balance endpoint with invalid year parameter"],"suspicions":["Impossible dates like 2033-02-30 are accepted (no explicit spec rule)","Weekend-only requests accepted (same root cause as AL-2)","Cancel/reject of others' non-pending request returns 409 before 403","Logout does not invalidate the server session"],"videos":["AL-1","AL-2","AL-3","AL-4"],"verify":{"AL-1":{"tests":2,"proven":2,"results":["known-bug-open","known-bug-open"]},"AL-2":{"tests":1,"proven":1,"results":["known-bug-open"]},"AL-3":{"tests":1,"proven":1,"results":["known-bug-open"]},"AL-4":{"tests":1,"proven":1,"results":["known-bug-open"]}},"problems":[],"notes":"# Session 20261103-105420-guided: Acme Leave (GUIDED)\n\n## Charters (biggest risk first)\n1. Approvals/permissions: who can approve/reject/cancel (R4, R6, R10). Roles: employee, employee2, manager.\n2. Day counting and balance: weekends, balance cap, approved-only counting (R1, R2, R5, R7). Roles: employee, manager.\n3. Request validation: reversed ranges, year boundary, bad dates/types (R3, R9). Role: employee.\n4. Privacy: own list vs team list, logged-out access (R8). Roles: all + anonymous.\n\n## Map\n- UI (single page `public/index.html` + `app.js`): login form; \"My leave\" = balance card (remaining/used), request form (From, To, Reason, \"Request leave\"), my-requests table with Cancel; \"Team\" (managers only) = team table with Approve/Reject.\n- API: POST /api/login, /api/logout; GET /api/me, /api/balance?year=, /api/requests, /api/team/requests; POST /api/requests, /api/requests/:id/{approve,reject,cancel}.\n- Rules live in `src/leave.mjs`; routing/auth in `server.mjs`.\n- Decision noted: because of the 15-minute budget I mapped the app from the source and the UI test ids and drove the UI only through the recorded repros (bughunterr record), not through interactive MCP browser sessions.\n\n## Probes\n| What | Expected | Result |\n|---|---|---|\n| Ben approves own pending request | 403, pending (R4) | **200 approved, decided_by Ben → AL-1** |\n| Cleo (employee) approves Ben's request | 403 (R4) | **200 approved → AL-1** |\n| Ben rejects a request | 403 | 403 ✓ |\n| Fri 8 – Mon 11 Mar 2030 | 2 days (R2) | **4 days → AL-2** |\n| End 2032-03-08 before start 2032-03-11 | 400, nothing saved (R3) | **201, days = -2 → AL-3** |\n| Two 15-day requests in 2077 both approved by Ana | second refused, remaining ≥ 0 (R1/R7) | **both 200, remaining -10 → AL-4** |\n| Request 2034-12-31..2035-01-01 | 400 (R9) | 400 ✓ |\n| 2036-01-01..03-01 (61 days) | 400 (R7) | 400 ✓ |\n| Cleo cancels Ben's pending request | 403 (R6) | 403 ✓ |\n| Ana approves an already approved request | 409 (R10) | 409 ✓ |\n| Employee GET /api/team/requests | 403 (R8) | 403 ✓ |\n| Cleo GET /api/requests | only her own (R8) | only her own ✓ |\n| Anonymous GET /api/requests | 401 | 401 ✓ |\n| start as number, end null | 400 | 400 ✓ |\n| start = end = 2033-02-30 (impossible date) | 400 | 201 saved with days 1 (suspicion, see below) |\n\n## Bugs\n- AL-1 (critical) Any employee can approve leave, including their own — approveRequest lacks role/owner checks (R4).\n- AL-2 (high) Weekends counted as leave days — countDays counts calendar days (R2). Also means Sat/Sun-only requests are accepted.\n- AL-3 (high) End-before-start accepted, saved with negative days (R3).\n- AL-4 (high) Approvals not re-checked against balance; remaining goes negative (R1/R7).\n\n## Suspicions not filed\n- Impossible dates (2033-02-30) are accepted: isDate relies on Date.parse which rolls over. No PRD rule names date validity explicitly (only basis \"inferred\"), so not filed under the spec-only rule.\n- Weekend-only request (e.g. Sat–Sun) accepted instead of 400 (R3 \"at least one working day\"): same root cause as AL-2 (countDays), so folded into AL-2 rather than filed twice.\n- Cancel/reject on a non-pending request of another user returns 409 before the 403 ownership/role check (check order leaks state). Minor, spec does not define precedence.\n- POST /api/logout clears the cookie but does not delete the server session; an old sid stays valid. Not covered by the PRD.\n\n## Not reached\n- Interactive browser mapping per role with network capture (MCP browser not used; UI exercised only via repro recordings).\n- UI vs API consistency of the balance card after approvals/cancellations.\n- Concurrency (double approve races), very long reasons (server truncates to 200), year-boundary balance via ?year= with junk values.\n","rules":"# Rules (from docs/prd.md)\n- R1 Every employee is entitled to 20 working days per calendar year.\n- R2 Request length counts working days only (Mon–Fri); Fri 8 Mar – Mon 11 Mar 2030 = 2 days.\n- R3 End must be on/after start and request must contain ≥1 working day; else 400 + message, nothing saved.\n- R4 Only a manager can approve/reject, nobody can decide their own request; else 403, stays pending.\n- R5 Remaining = entitlement − working days of approved requests in that year (pending/rejected/cancelled excluded).\n- R6 An employee can cancel their own pending request; nobody else (403).\n- R7 A request may not be longer than the remaining balance (400).\n- R8 Employee sees only own requests; team list is managers only (403).\n- R9 A request stays inside one calendar year.\n- R10 Only pending requests can be decided (409 otherwise).\n"}],"videoBase":"../"};
+  const $ = (s) => document.querySelector(s);
+  const el = (tag, attrs, ...kids) => {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (k === 'class') n.className = v;
+      else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+      else if (v !== undefined && v !== null && v !== false) n.setAttribute(k, v);
+    }
+    for (const kid of kids.flat()) if (kid !== null && kid !== undefined && kid !== false) n.append(kid.nodeType ? kid : String(kid));
+    return n;
+  };
+  const pill = (cls, text) => el('span', { class: 'pill ' + cls }, text);
+  const fmt = (iso) => (iso ? new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '–');
+  const proofPill = (p) => !p ? pill('plain', 'spec not run')
+    : p.proven === p.tests && p.tests ? pill('good', 'spec proves it')
+    : p.results.includes('possibly-fixed') ? pill('info', 'possibly fixed')
+    : pill('warn', 'spec unproven');
+  const confPill = (c) => pill(c === 'confirmed' ? 'bad' : c === 'likely' ? 'warn' : 'info', c);
+
+  $('#app-name').textContent = DATA.app;
+  document.title = DATA.app + ' · BugHunterr';
+  $('#generated').textContent = DATA.url + ' · board built ' + fmt(DATA.generated);
+
+  const latest = DATA.sessions[0];
+  if (latest) {
+    $('#latest').append(el('div', { class: 'banner' + (latest.status === 'complete' ? '' : ' incomplete') },
+      el('strong', {}, 'Latest hunt'), pill(latest.status === 'complete' ? 'good' : 'warn', latest.status),
+      el('span', {}, `${latest.mode} · ${latest.agent} · ${fmt(latest.started)} · ${latest.minutesUsed ?? '–'} min`),
+      el('span', {}, 'New bugs: ', el('strong', {}, (latest.newBugs || []).join(', ') || 'none')),
+      latest.possiblyFixed?.length ? el('span', {}, 'Possibly fixed: ', el('strong', {}, latest.possiblyFixed.join(', '))) : null));
+  }
+
+  const tabs = document.querySelectorAll('nav.tabs button');
+  function showTab(name) {
+    tabs.forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
+    for (const t of ['bugs', 'sessions']) $('#tab-' + t).hidden = t !== name;
+  }
+  tabs.forEach((b) => b.addEventListener('click', () => { showTab(b.dataset.tab); history.replaceState(null, '', '#' + b.dataset.tab); }));
+
+  let current = null;
+  function filtered() {
+    const sev = $('#f-sev').value, st = $('#f-state').value, basis = $('#f-basis').value, q = $('#f-q').value.toLowerCase();
+    return DATA.bugs.filter((b) => (!sev || b.sev === sev) && (!st || b.state === st) && (!basis || b.expected.basis === basis)
+      && (!q || [b.id, b.title, b.area, b.summary, b.expected.requirement].join(' ').toLowerCase().includes(q)));
+  }
+  function renderList() {
+    const list = filtered();
+    const box = $('#bug-list');
+    box.replaceChildren();
+    if (!list.length) box.append(el('div', { class: 'empty' }, DATA.bugs.length ? 'No bugs match these filters.' : 'No bugs yet. Run a hunt.'));
+    for (const b of list) {
+      box.append(el('button', { 'aria-current': String(current === b.id), 'data-bug': b.id, onclick: () => select(b.id) },
+        el('span', { class: 'id' }, b.id), b.title,
+        el('div', { class: 'meta' }, pill('sev-' + b.sev, b.sev), confPill(b.confidence), proofPill(b.proof), el('span', { class: 'sub' }, b.area))));
+    }
+    if (!list.some((b) => b.id === current)) { current = null; $('#bug-detail').replaceChildren(); }
+    if (!current && list[0]) select(list[0].id, true);
+  }
+  async function copy(text, note) {
+    try { await navigator.clipboard.writeText(text); } catch (e) {
+      const t = el('textarea', {}, text); document.body.append(t); t.select(); document.execCommand('copy'); t.remove();
+    }
+    note.textContent = 'Copied';
+    setTimeout(() => (note.textContent = ''), 2000);
+  }
+  function select(id, quiet) {
+    current = id;
+    const b = DATA.bugs.find((x) => x.id === id);
+    document.querySelectorAll('#bug-list button').forEach((n) => n.setAttribute('aria-current', String(n.dataset.bug === id)));
+    if (!quiet) history.replaceState(null, '', '#bug=' + id);
+    const d = $('#bug-detail');
+    d.replaceChildren();
+    if (!b) return;
+    const note = el('span', { class: 'copied', 'aria-live': 'polite' });
+    const basis = b.expected.basis === 'spec' ? `Spec ${b.expected.requirement || ''}` : 'Inferred intent';
+    d.append(
+      el('h2', {}, b.id + ' · ' + b.title),
+      el('div', { class: 'meta' }, pill('sev-' + b.sev, b.sev), confPill(b.confidence), pill(b.expected.basis === 'spec' ? 'info' : 'plain', basis), proofPill(b.proof), pill(b.state === 'open' ? 'bad' : 'good', b.state),
+        el('span', { class: 'sub' }, `${b.area} · found ${b.foundAt} · ${b.environment}`)),
+      el('p', {}, b.summary),
+      el('div', { class: 'actions' },
+        el('button', { class: 'btn', 'data-testid': 'copy-fix-prompt', onclick: () => copy(b.fixPrompt, note) }, 'Copy fix prompt'),
+        el('button', { class: 'btn secondary', onclick: () => { const p = d.querySelector('pre.prompt'); p.hidden = !p.hidden; } }, 'Show fix prompt'),
+        note),
+      el('pre', { class: 'prompt', hidden: true }, b.fixPrompt),
+      b.video ? el('video', { controls: true, preload: 'metadata', src: DATA.videoBase + b.video }) : el('p', { class: 'sub' }, 'No video recorded.'),
+      el('h3', {}, 'Steps'), el('ol', {}, b.steps.map((s) => el('li', {}, s))),
+      el('h3', {}, 'Expected vs actual'),
+      el('dl', { class: 'kv' },
+        el('dt', {}, 'Expected'), el('dd', {}, b.expected.text),
+        el('dt', {}, b.expected.basis === 'spec' ? 'Rule' : 'Evidence'), el('dd', {}, b.expected.basis === 'spec' ? `${b.expected.requirement || '–'}${b.expected.link ? ' · ' + b.expected.link : ''}` : b.expected.evidence),
+        el('dt', {}, 'Actual'), el('dd', {}, b.actual)),
+      el('h3', {}, 'Confirmed two ways'),
+      el('dl', { class: 'kv' },
+        el('dt', {}, 'Response'), el('dd', {}, el('code', {}, b.how.response)),
+        el('dt', {}, 'Stored state'), el('dd', {}, el('code', {}, b.how.state)),
+        b.how.byDesignCheck ? el('dt', {}, 'Not by design') : null, b.how.byDesignCheck ? el('dd', {}, b.how.byDesignCheck) : null),
+      el('h3', {}, 'Where'),
+      el('dl', { class: 'kv' },
+        el('dt', {}, 'Code'), el('dd', {}, b.where?.file ? el('code', {}, b.where.file + (b.where.function ? ' › ' + b.where.function : '') + (b.where.line ? ':' + b.where.line : '')) : 'not found'),
+        el('dt', {}, 'Regression spec'), el('dd', {}, b.spec ? el('code', {}, b.spec) : '–'),
+        el('dt', {}, 'Found in'), el('dd', {}, b.run)),
+    );
+  }
+  ['#f-sev', '#f-state', '#f-basis'].forEach((s) => $(s).addEventListener('change', renderList));
+  $('#f-q').addEventListener('input', renderList);
+
+  const box = $('#tab-sessions');
+  if (!DATA.sessions.length) box.append(el('div', { class: 'empty' }, 'No hunts yet.'));
+  for (const s of DATA.sessions) {
+    box.append(el('div', { class: 'card' },
+      el('h2', {}, s.run),
+      el('div', { class: 'meta' }, pill(s.status === 'complete' ? 'good' : 'warn', s.status), pill(s.mode === 'guided' ? 'info' : 'plain', s.mode), el('span', { class: 'sub' }, `${s.agent} · ${fmt(s.started)} · ${s.minutesUsed ?? '–'} of ${s.minutes} min`)),
+      el('dl', { class: 'kv', style: 'margin-top:10px' },
+        el('dt', {}, 'Focus'), el('dd', {}, s.focus || '–'),
+        el('dt', {}, 'New bugs'), el('dd', {}, (s.newBugs || []).join(', ') || 'none'),
+        el('dt', {}, 'Explored'), el('dd', {}, (s.explored || []).join(', ') || '–'),
+        el('dt', {}, 'Not explored'), el('dd', {}, (s.notExplored || []).join('; ') || '–'),
+        el('dt', {}, 'Suspicions'), el('dd', {}, (s.suspicions || []).join('; ') || '–'),
+        el('dt', {}, 'Problems'), el('dd', {}, (s.problems || []).length ? el('ul', {}, s.problems.map((p) => el('li', {}, p))) : 'none')),
+      s.rules ? el('details', {}, el('summary', {}, s.mode === 'guided' ? 'Rules from the spec' : 'Inferred spec'), el('pre', {}, s.rules)) : null,
+      s.notes ? el('details', {}, el('summary', {}, 'Session notes'), el('pre', {}, s.notes)) : null));
+  }
+
+  const h = location.hash.slice(1);
+  if (h === 'sessions') showTab('sessions');
+  renderList();
+  if (h.startsWith('bug=')) select(h.slice(4), true);
+})();
+</script>
+</body>
+</html>

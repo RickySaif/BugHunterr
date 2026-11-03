@@ -1,0 +1,4 @@
+{ "explored": ["approvals", "permissions", "day counting", "balance", "request validation", "privacy"],
+  "notExplored": ["interactive browser mapping with network capture", "UI balance card vs API consistency", "concurrent decisions", "balance endpoint with invalid year parameter"],
+  "suspicions": ["Impossible dates like 2033-02-30 are accepted (no explicit spec rule)", "Weekend-only requests accepted (same root cause as AL-2)", "Cancel/reject of others' non-pending request returns 409 before 403", "Logout does not invalidate the server session"],
+  "bugs": ["AL-1", "AL-2", "AL-3", "AL-4"] }

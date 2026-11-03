@@ -1,0 +1,34 @@
+{
+  "id": "AL-3",
+  "title": "An end date before the start date is accepted, with negative days",
+  "sev": "medium",
+  "area": "requests",
+  "summary": "A request whose end date is before its start date is saved instead of refused. Its day count is negative, so if a manager approves it the employee's balance goes up.",
+  "steps": [
+    "Log in as Ben (employee).",
+    "Request leave from 15 March 2030 to 13 March 2030 (dates the wrong way round).",
+    "No error is shown; the request appears as pending with -1 days."
+  ],
+  "expected": {
+    "text": "The end date must be on or after the start date; otherwise HTTP 400 with a message, and nothing is saved.",
+    "basis": "spec",
+    "requirement": "R3",
+    "link": "docs/prd.md#us-2-request-leave"
+  },
+  "actual": "HTTP 201. The request is stored with days = -1 and status pending.",
+  "where": { "file": "src/leave.mjs", "function": "createRequest" },
+  "how": {
+    "response": "POST /api/requests {start: 2030-03-15, end: 2030-03-13} → 201 {\"days\":-1}",
+    "state": "SELECT start_date, end_date, days FROM requests WHERE id = <id> → 2030-03-15, 2030-03-13, -1",
+    "byDesignCheck": "PRD R3 is explicit."
+  },
+  "confidence": "confirmed",
+  "related": ["AL-2"],
+  "state": "open",
+  "hint": "In createRequest, refuse with 400 when end < start (and when the working-day count is below 1), before the balance check and the INSERT.",
+  "spec": "specs/AL-3.spec.mjs",
+  "repro": "repro/AL-3.repro.mjs",
+  "environment": "local",
+  "foundAt": "__TODAY__",
+  "run": "__RUN__"
+}

@@ -1,0 +1,38 @@
+{
+  "name": "bughunterr",
+  "version": "0.1.0",
+  "description": "An AI agent (Claude Code or Codex) hunts bugs in your web app with a real browser, the source code, the database and the shell, guided by a PRD or unguided, and proves each bug with a video, a regression spec and a fix prompt.",
+  "license": "MIT",
+  "author": "Ricky Saif",
+  "type": "module",
+  "bin": {
+    "bughunterr": "bin/bughunterr.mjs"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RickySaif/BugHunterr.git"
+  },
+  "scripts": {
+    "start": "node bin/bughunterr.mjs serve --dir examples/workspace",
+    "demo": "node bin/bughunterr.mjs demo",
+    "demo:app": "node examples/acme-leave/server.mjs --reset",
+    "hunt": "node bin/bughunterr.mjs hunt --dir examples/workspace",
+    "lint": "eslint .",
+    "test": "node --test test/",
+    "test:e2e": "node scripts/e2e.mjs",
+    "check": "npm run lint && npm test && npm run test:e2e"
+  },
+  "dependencies": {
+    "@playwright/mcp": "0.0.83",
+    "@playwright/test": "1.64.1",
+    "ajv": "8.20.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.13.0",
+    "globals": "17.13.0"
+  }
+}

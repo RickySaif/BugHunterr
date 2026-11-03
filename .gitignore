@@ -1,0 +1,21 @@
+node_modules/
+.demo/
+examples/acme-leave/data/
+**/bh.mjs
+!lib/bh.mjs
+**/sessions/.playwright/
+**/sessions/*/browser/
+**/sessions/*/verify/
+**/sessions/*/record/
+**/sessions/*/*.json.tmp
+test-results/
+.playwright-mcp/
+.DS_Store
+# Example workspace: keep the record (notes, rules, status), not the raw agent logs with machine paths
+examples/workspace/sessions/*/agent.log
+examples/workspace/sessions/*/prompt.md
+examples/workspace/sessions/*/mcp.json
+examples/workspace/sessions/*/app.log
+examples/workspace/sessions/*/ledger.jsonl
+examples/workspace/sessions/*/specs-*.json
+examples/workspace/sessions/*/repro.json

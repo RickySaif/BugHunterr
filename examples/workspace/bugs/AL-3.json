@@ -1,0 +1,38 @@
+{
+  "id": "AL-3",
+  "title": "Request with end date before start date is accepted with negative days",
+  "sev": "high",
+  "area": "requests",
+  "summary": "The app never checks that the end date is on or after the start date. A backwards range is saved with a negative day count; once approved it would add days to the employee's balance instead of using them.",
+  "steps": [
+    "Log in as ben@acme.example",
+    "POST /api/requests {start:'2032-03-11', end:'2032-03-08'}",
+    "Check the response and the stored row"
+  ],
+  "expected": {
+    "text": "HTTP 400 with a message; nothing saved.",
+    "basis": "spec",
+    "requirement": "R3",
+    "link": "docs/prd.md#us-2-request-leave"
+  },
+  "actual": "HTTP 201, request saved as pending with days = -2.",
+  "where": {
+    "file": "src/leave.mjs",
+    "function": "createRequest",
+    "line": 40
+  },
+  "how": {
+    "response": "POST /api/requests 2032-03-11..2032-03-08 → 201 {id:4, days:-2, status:'pending'}",
+    "state": "SELECT days, status FROM requests WHERE id = 4 → -2, pending",
+    "byDesignCheck": "R3 explicitly requires end >= start with HTTP 400 and nothing saved."
+  },
+  "confidence": "confirmed",
+  "state": "open",
+  "hint": "In createRequest, throw HttpError(400) when end < start (and when the working-day count is 0) before inserting.",
+  "spec": "specs/AL-3.spec.mjs",
+  "repro": "repro/AL-3.repro.mjs",
+  "environment": "local",
+  "foundAt": "2026-11-03",
+  "run": "20261103-105420-guided",
+  "video": "videos/AL-3-backwards-date-range-is-accepted.webm"
+}

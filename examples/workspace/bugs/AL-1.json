@@ -1,0 +1,39 @@
+{
+  "id": "AL-1",
+  "title": "Any employee can approve leave requests, including their own",
+  "sev": "critical",
+  "area": "approvals",
+  "summary": "The approve action checks nothing about who is calling it. Any logged-in employee can approve their own leave request or a colleague's, so the manager's approval step can be skipped completely.",
+  "steps": [
+    "Log in as ben@acme.example (employee)",
+    "POST /api/requests {start:'2031-05-06', end:'2031-05-06'} → pending request id N",
+    "POST /api/requests/N/approve as Ben",
+    "Also: log in as cleo@acme.example (employee) and POST /api/requests/M/approve on Ben's request M"
+  ],
+  "expected": {
+    "text": "HTTP 403 for anyone who is not a manager or who owns the request; request stays pending.",
+    "basis": "spec",
+    "requirement": "R4",
+    "link": "docs/prd.md#us-3-decide"
+  },
+  "actual": "HTTP 200, status becomes 'approved' with decided_by = the employee (Ben himself, or Cleo).",
+  "where": {
+    "file": "src/leave.mjs",
+    "function": "approveRequest",
+    "line": 60
+  },
+  "how": {
+    "response": "POST /api/requests/1/approve as Ben → 200 {status:'approved', decided_by:2}; POST /api/requests/2/approve as Cleo → 200 {status:'approved', decided_by:3}",
+    "state": "SELECT status, decided_by FROM requests WHERE id IN (1,2) → approved/2 (Ben himself), approved/3 (Cleo, an employee)",
+    "byDesignCheck": "R4 says only a manager can approve and nobody can decide their own request; rejectRequest right below has exactly these checks, approveRequest lacks them."
+  },
+  "confidence": "confirmed",
+  "state": "open",
+  "hint": "In approveRequest add the same two checks as rejectRequest: role must be 'manager' (403) and req.user_id !== user.id (403).",
+  "spec": "specs/AL-1.spec.mjs",
+  "repro": "repro/AL-1.repro.mjs",
+  "environment": "local",
+  "foundAt": "2026-11-03",
+  "run": "20261103-105420-guided",
+  "video": "videos/AL-1-employee-approves-own-leave-request.webm"
+}

@@ -1,0 +1,40 @@
+{
+  "id": "AL-4",
+  "title": "Approving several pending requests pushes an employee's balance below zero",
+  "sev": "high",
+  "area": "approvals",
+  "summary": "The balance is only checked when a request is created, and pending requests are not counted. An employee can file several requests that each fit, and a manager can approve all of them, so the employee gets more than 20 days and the balance shows a negative number.",
+  "steps": [
+    "Log in as cleo@acme.example",
+    "POST /api/requests 2077-03-01..2077-03-15 (15 days) → id A",
+    "POST /api/requests 2077-05-01..2077-05-15 (15 days) → id B (accepted: pending A not counted)",
+    "Log in as ana@acme.example (manager); POST /api/requests/A/approve then /B/approve",
+    "GET /api/balance?year=2077 as Cleo"
+  ],
+  "expected": {
+    "text": "The second approval is refused because it exceeds the remaining balance (20 − 15 = 5); remaining never goes below 0.",
+    "basis": "spec",
+    "requirement": "R7",
+    "link": "docs/prd.md#us-2-request-leave"
+  },
+  "actual": "Both approvals return 200; balance for 2077 is {used: 30, remaining: -10}.",
+  "where": {
+    "file": "src/leave.mjs",
+    "function": "approveRequest",
+    "line": 60
+  },
+  "how": {
+    "response": "POST /api/requests/17/approve → 200, POST /api/requests/18/approve → 200; GET /api/balance?year=2077 → {used:30, remaining:-10}",
+    "state": "SELECT SUM(days) FROM requests WHERE user_id=3 AND status='approved' AND start_date LIKE '2077%' → 30",
+    "byDesignCheck": "R1 caps entitlement at 20 days per year and R7 forbids requests longer than the remaining balance; R5 defines remaining from approved requests, so the cap must hold at approval time. Not the same cause as AL-2 (day counting) or AL-1 (who may approve): here a real manager approves."
+  },
+  "confidence": "confirmed",
+  "state": "open",
+  "hint": "In approveRequest, re-compute balance(db, req.user_id, year) and refuse (400/409) when req.days > remaining.",
+  "spec": "specs/AL-4.spec.mjs",
+  "repro": "repro/AL-4.repro.mjs",
+  "environment": "local",
+  "foundAt": "2026-11-03",
+  "run": "20261103-105420-guided",
+  "video": "videos/AL-4-approvals-push-balance-below-zero.webm"
+}

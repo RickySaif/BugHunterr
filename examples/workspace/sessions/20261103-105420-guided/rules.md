@@ -1,0 +1,11 @@
+# Rules (from docs/prd.md)
+- R1 Every employee is entitled to 20 working days per calendar year.
+- R2 Request length counts working days only (Mon–Fri); Fri 8 Mar – Mon 11 Mar 2030 = 2 days.
+- R3 End must be on/after start and request must contain ≥1 working day; else 400 + message, nothing saved.
+- R4 Only a manager can approve/reject, nobody can decide their own request; else 403, stays pending.
+- R5 Remaining = entitlement − working days of approved requests in that year (pending/rejected/cancelled excluded).
+- R6 An employee can cancel their own pending request; nobody else (403).
+- R7 A request may not be longer than the remaining balance (400).
+- R8 Employee sees only own requests; team list is managers only (403).
+- R9 A request stays inside one calendar year.
+- R10 Only pending requests can be decided (409 otherwise).

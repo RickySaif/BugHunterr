@@ -1,0 +1,1 @@
+{ "explored": ["approvals", "request dates"], "notExplored": ["balance after cancellation", "privacy (R8)"], "suspicions": [], "bugs": ["AL-1", "AL-2", "AL-3"] }

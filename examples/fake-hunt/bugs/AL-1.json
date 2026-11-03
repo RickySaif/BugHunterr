@@ -1,0 +1,34 @@
+{
+  "id": "AL-1",
+  "title": "An employee can approve their own leave request",
+  "sev": "high",
+  "area": "approvals",
+  "summary": "The approve endpoint does not check who is calling. Any logged-in employee can approve their own request, or a colleague's. The page hides the Approve button, but the server accepts the call, so managers lose control over who is off.",
+  "steps": [
+    "Log in as Ben (employee).",
+    "Request one day of leave. It appears as pending.",
+    "Send POST /api/requests/<id>/approve with Ben's session (the browser console is enough).",
+    "Reload: the request is approved, decided by Ben himself."
+  ],
+  "expected": {
+    "text": "Only a manager can approve, and nobody can decide their own request. Anyone else gets HTTP 403 and the request stays pending.",
+    "basis": "spec",
+    "requirement": "R4",
+    "link": "docs/prd.md#us-3-decide"
+  },
+  "actual": "HTTP 200. The request is stored as approved with decided_by = Ben's own user id.",
+  "where": { "file": "src/leave.mjs", "function": "approveRequest" },
+  "how": {
+    "response": "POST /api/requests/1/approve as ben@acme.example → 200 {\"status\":\"approved\",\"decided_by\":2}",
+    "state": "SELECT status, decided_by FROM requests WHERE id = 1 → approved, 2 (Ben)",
+    "byDesignCheck": "PRD R4 is explicit, and rejectRequest already enforces both checks."
+  },
+  "confidence": "confirmed",
+  "state": "open",
+  "hint": "In approveRequest, do what rejectRequest already does: 403 unless user.role is 'manager', and 403 when req.user_id === user.id. Check both before the UPDATE.",
+  "spec": "specs/AL-1.spec.mjs",
+  "repro": "repro/AL-1.repro.mjs",
+  "environment": "local",
+  "foundAt": "__TODAY__",
+  "run": "__RUN__"
+}

@@ -1,0 +1,34 @@
+{
+  "id": "AL-2",
+  "title": "Weekend days are charged as leave",
+  "sev": "high",
+  "area": "requests",
+  "summary": "The length of a request counts calendar days instead of working days. A Friday-to-Monday request is charged as 4 days instead of 2, so employees lose leave they never take.",
+  "steps": [
+    "Log in as Cleo (employee).",
+    "Request leave from Friday 8 March 2030 to Monday 11 March 2030.",
+    "Look at the Days column in My requests: it says 4."
+  ],
+  "expected": {
+    "text": "Only Monday to Friday count. By hand: Friday 8 + Monday 11 March 2030 = 2 working days.",
+    "basis": "spec",
+    "requirement": "R2",
+    "link": "docs/prd.md#us-2-request-leave"
+  },
+  "actual": "The request is stored with days = 4.",
+  "where": { "file": "src/leave.mjs", "function": "countDays" },
+  "how": {
+    "response": "POST /api/requests {start: 2030-03-08, end: 2030-03-11} → 201 {\"days\":4}",
+    "state": "SELECT days FROM requests WHERE id = <id> → 4",
+    "byDesignCheck": "PRD R2 gives this exact example: 2 working days."
+  },
+  "confidence": "confirmed",
+  "related": ["AL-3"],
+  "state": "open",
+  "hint": "Make countDays walk from start to end and count only days whose UTC weekday is Monday to Friday.",
+  "spec": "specs/AL-2.spec.mjs",
+  "repro": "repro/AL-2.repro.mjs",
+  "environment": "local",
+  "foundAt": "__TODAY__",
+  "run": "__RUN__"
+}

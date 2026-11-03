@@ -1,0 +1,38 @@
+{
+  "id": "AL-2",
+  "title": "Leave length counts Saturdays and Sundays as leave days",
+  "sev": "high",
+  "area": "requests",
+  "summary": "The number of days of a request is counted in calendar days, so any request spanning a weekend charges the weekend too. Employees lose balance they are entitled to (a Fri–Mon request costs 4 days instead of 2).",
+  "steps": [
+    "Log in as ben@acme.example",
+    "POST /api/requests {start:'2030-03-08' (Fri), end:'2030-03-11' (Mon)}",
+    "Read the days field of the response and of the stored row"
+  ],
+  "expected": {
+    "text": "days = 2 (Fri 8 and Mon 11 March 2030; Sat 9 and Sun 10 not counted) — the spec's own example.",
+    "basis": "spec",
+    "requirement": "R2",
+    "link": "docs/prd.md#us-2-request-leave"
+  },
+  "actual": "days = 4. Also a Saturday-only or Sat–Sun request is accepted as 1 or 2 days instead of being refused (R3: at least one working day).",
+  "where": {
+    "file": "src/leave.mjs",
+    "function": "countDays",
+    "line": 14
+  },
+  "how": {
+    "response": "POST /api/requests 2030-03-08..2030-03-11 → 201 {id:3, days:4}",
+    "state": "SELECT days FROM requests WHERE id = 3 → 4",
+    "byDesignCheck": "R2 states working days only and gives this exact example as 2 days."
+  },
+  "confidence": "confirmed",
+  "state": "open",
+  "hint": "Make countDays iterate the range and count only UTC weekdays 1–5; then refuse 0-day requests in createRequest (R3).",
+  "spec": "specs/AL-2.spec.mjs",
+  "repro": "repro/AL-2.repro.mjs",
+  "environment": "local",
+  "foundAt": "2026-11-03",
+  "run": "20261103-105420-guided",
+  "video": "videos/AL-2-weekend-days-are-charged-as-leave.webm"
+}

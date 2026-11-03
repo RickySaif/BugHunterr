@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Acme Leave</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <strong class="brand">Acme Leave</strong>
+    <nav id="nav" hidden>
+      <a href="#mine" data-testid="nav-mine">My leave</a>
+      <a href="#team" data-testid="nav-team" id="nav-team" hidden>Team</a>
+    </nav>
+    <span id="who" data-testid="who"></span>
+    <button id="logout" data-testid="logout" hidden>Log out</button>
+  </header>
+
+  <main>
+    <section id="login-view" hidden>
+      <h1>Log in</h1>
+      <form id="login-form">
+        <label>E-mail <input name="email" type="email" data-testid="email" autocomplete="username" required></label>
+        <label>Password <input name="password" type="password" data-testid="password" autocomplete="current-password" required></label>
+        <button type="submit" data-testid="login">Log in</button>
+        <p class="error" id="login-error" role="alert"></p>
+      </form>
+    </section>
+
+    <section id="mine-view" hidden>
+      <div class="card" data-testid="balance">
+        <h2>Balance <span id="bal-year"></span></h2>
+        <p><span class="big" id="bal-remaining" data-testid="remaining"></span> days left
+          <small>of <span id="bal-entitlement"></span>, <span id="bal-used" data-testid="used"></span> used</small></p>
+      </div>
+      <div class="card">
+        <h2>New request</h2>
+        <form id="request-form">
+          <label>From <input name="start" type="date" data-testid="start" required></label>
+          <label>To <input name="end" type="date" data-testid="end" required></label>
+          <label>Reason <input name="reason" data-testid="reason" maxlength="200"></label>
+          <button type="submit" data-testid="submit-request">Request leave</button>
+          <p class="error" id="request-error" role="alert" data-testid="request-error"></p>
+        </form>
+      </div>
+      <h2>My requests</h2>
+      <table data-testid="my-requests"><thead><tr><th>From</th><th>To</th><th>Days</th><th>Reason</th><th>Status</th><th></th></tr></thead><tbody></tbody></table>
+    </section>
+
+    <section id="team-view" hidden>
+      <h1>Team requests</h1>
+      <table data-testid="team-requests"><thead><tr><th>Who</th><th>From</th><th>To</th><th>Days</th><th>Status</th><th></th></tr></thead><tbody></tbody></table>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>

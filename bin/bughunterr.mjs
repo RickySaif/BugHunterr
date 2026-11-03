@@ -9,20 +9,23 @@ import {
   PKG, CONFIG_FILE, BhError, findWorkspace, loadConfig, ensureWorkspace, writeJson, readJson, bugIds, nextBugNumber, runIdNow,
 } from '../src/config.mjs';
 import * as db from '../src/db.mjs';
-import { ensureApp } from '../src/runner.mjs';
+import { ensureApp, up } from '../src/runner.mjs';
 import { check, verify, record } from '../src/finish.mjs';
 import { buildBoard } from '../src/board.mjs';
 import { buildPrompt } from '../src/prompt.mjs';
 import { runAgent, which } from '../src/agent.mjs';
+import { sourceReport, dataReport, loginReport, runSeed } from '../src/setup.mjs';
 
 const HELP = `BugHunterr: an AI agent hunts bugs in your web app and proves each one.
 
-  bughunterr init [dir] --url <url> [--source <path>] [--spec <prd.md>] [--name <app>] [--prefix <AB>]
-      Create a workspace (bughunterr.json + folders). Edit bughunterr.json for accounts, login and database.
+  bughunterr init [dir] --url <url> --source <app code> [--spec <prd.md>] [--name <app>] [--prefix <AB>]
+                  [--seed-command "<cmd>"] [--db-write]
+      Create a workspace (bughunterr.json + folders). Edit bughunterr.json for accounts, login and database,
+      then run "bughunterr doctor": it checks the source code, the seed data and every test login.
 
   bughunterr hunt [--agent claude|codex|fake] [--unguided] [--focus "<area or risk>"] [--minutes 20]
-                  [--model <m>] [--headed] [--yolo]
-      Start the app if needed, let the agent hunt, then check, record videos, prove specs, build the board.
+                  [--model <m>] [--headed] [--yolo] [--db-write] [--no-seed]
+      Run the seed command (if any), start the app if needed, let the agent hunt, then check, record videos, prove specs, build the board.
       Guided when bughunterr.json has "spec" (a PRD); --unguided ignores it and infers intent from code and UI.
 
   bughunterr check   [ID…]            validate bug files
@@ -31,8 +34,8 @@ const HELP = `BugHunterr: an AI agent hunts bugs in your web app and proves each
   bughunterr board                    rebuild board/index.html
   bughunterr serve   [--port 4800]    serve the board
   bughunterr db "<SELECT …>"          read-only query (JSON out)
-  bughunterr db --write --table t --ids 1,2 --why "…" --run r "<UPDATE …>"   guarded local write
-  bughunterr doctor                   check the tools
+  bughunterr db --write --table t --ids 1,2 --why "…" --run r "<UPDATE …>"   guarded write (when writes are on)
+  bughunterr doctor                   check the tools, the source code, the seed data and the test logins
   bughunterr demo                     offline demo: fake agent against the bundled Acme Leave app
 
   Common: --dir <workspace>  (default: the folder with bughunterr.json, here or above)`;
@@ -44,9 +47,12 @@ const { values: opt, positionals: pos } = parseArgs({
     prefix: { type: 'string' }, agent: { type: 'string', default: 'claude' }, unguided: { type: 'boolean' }, focus: { type: 'string' },
     minutes: { type: 'string' }, model: { type: 'string' }, headed: { type: 'boolean' }, yolo: { type: 'boolean' }, run: { type: 'string' },
     port: { type: 'string' }, write: { type: 'boolean' }, table: { type: 'string' }, ids: { type: 'string' }, why: { type: 'string' },
-    quiet: { type: 'boolean' }, help: { type: 'boolean', short: 'h' },
+    quiet: { type: 'boolean' }, help: { type: 'boolean', short: 'h' }, 'db-write': { type: 'boolean' },
+    'seed-command': { type: 'string' }, seed: { type: 'boolean', default: true },
   },
+  allowNegative: true,
 });
+if (opt['db-write']) process.env.BH_DB_WRITE = '1';
 const [command = 'help', ...rest] = pos;
 const ws = () => findWorkspace(opt.dir);
 const cfg = () => loadConfig(ws());
@@ -72,6 +78,7 @@ const commands = {
     const dir = resolve(rest[0] || opt.dir || '.');
     if (existsSync(join(dir, CONFIG_FILE))) throw new BhError(`${join(dir, CONFIG_FILE)} already exists`);
     if (!opt.url) throw new BhError('init needs --url (where the app runs, e.g. http://localhost:3000)');
+    if (!opt.source) say('Note: no --source given. Without the app\'s code the agent cannot say where a bug lives. Add "source" to bughunterr.json later.');
     mkdirSync(dir, { recursive: true });
     const r = (p) => (p ? relative(dir, resolve(p)) || '.' : undefined);
     const config = {
@@ -87,13 +94,17 @@ const commands = {
         api: { method: 'POST', path: '/api/login', body: { email: '{user}', password: '{password}' } },
         ui: { path: '/', user: 'input[type=email]', password: 'input[type=password]', submit: 'button[type=submit]', loggedIn: '[data-testid=who]' },
       },
-      db: null,
+      // The test database. sqlite: { "engine": "sqlite", "file": "../my-app/data/app.db" }; postgres/mysql: host, port, name, user, password.
+      // "write": "off" (read-only, default), "local" (only a local database), or "on" (any environment except production).
+      db: opt['db-write'] ? { engine: 'sqlite', file: 'CHANGE-ME.db', write: 'on' } : null,
+      // A command that resets the test database and fills it with realistic data for every role. Runs before each hunt.
+      seed: opt['seed-command'] ? { command: opt['seed-command'] } : null,
       app: null,
     };
     writeFileSync(join(dir, CONFIG_FILE), JSON.stringify(config, null, 2) + '\n');
     ensureWorkspace(dir);
     writeFileSync(join(dir, '.gitignore'), 'bh.mjs\nsessions/.playwright/\nsessions/*/browser/\n');
-    say(`Workspace ready: ${dir}\nNext: edit ${CONFIG_FILE} (accounts, login, "db", "app.start"), then run: bughunterr hunt`);
+    say(`Workspace ready: ${dir}\nNext: edit ${CONFIG_FILE} (accounts, login, "db", "seed", "app.start"), run "bughunterr doctor", then "bughunterr hunt".`);
   },
 
   hunt: async () => {
@@ -108,17 +119,22 @@ const commands = {
     const existing = [...before].map((id) => readJson(join(c.ws, 'bugs', `${id}.json`))).map((b) => ({ id: b.id, title: b.title, state: b.state }));
     const started = new Date();
     const deadline = new Date(started.getTime() + minutes * 60_000);
-    const status = { run, mode, agent: opt.agent, focus: opt.focus || null, minutes, started: started.toISOString(), status: 'running', url: c.url };
+    const status = { run, mode, agent: opt.agent, focus: opt.focus || null, minutes, dbWrite: db.writeLevel(c), started: started.toISOString(), status: 'running', url: c.url };
     writeJson(join(sessionDir, 'status.json'), status);
     say(`BugHunterr · ${c.name} · ${mode} · agent ${opt.agent} · ${minutes} min · session ${run}`);
 
+    if (opt.seed && c.seed && (await up(c.url + (c.app?.health || '/')))) {
+      throw new BhError(`the app is already running on ${c.url}, and "seed" would reset its database under it. Stop the app (BugHunterr starts it after seeding), or hunt --no-seed.`);
+    }
+    const seeded = opt.seed && runSeed(c, join(sessionDir, 'seed.log'));
+    if (seeded) say(`  seeded: ${typeof c.seed === 'string' ? c.seed : c.seed.command}`);
     const app = await ensureApp(c, join(sessionDir, 'app.log'));
     if (app.started) say(`  app started (${c.url}), output → ${relative(c.ws, app.log)}`);
     let result;
     try {
       const prompt = buildPrompt(c, {
         run, mode, deadline: deadline.toLocaleString(), nextId: nextBugNumber(c.ws, c.prefix), focus: opt.focus,
-        appLog: app.log ? join(sessionDir, 'app.log') : null, existing,
+        appLog: app.log ? join(sessionDir, 'app.log') : null, existing, dbWrite: db.writeLevel(c), seeded,
       });
       say('  hunting… (live log: ' + relative(c.ws, join(sessionDir, 'agent.log')) + ')');
       result = await runAgent(c, { agent: opt.agent, prompt, sessionDir, run, minutes, model: opt.model, headed: opt.headed, yolo: opt.yolo, quiet: opt.quiet });
@@ -242,13 +258,32 @@ const commands = {
     } catch { /* not installed */ }
     ok(browser, 'Playwright Chromium', 'npx playwright install chromium');
     ok(which('ffmpeg'), 'ffmpeg, optional (seekable videos)', 'brew install ffmpeg');
+    let c;
     try {
-      const c = cfg();
-      ok(true, `workspace ${c.ws} (${c.name}, ${c.spec.length ? 'guided' : 'unguided'})`);
-      for (const s of c.spec) ok(existsSync(s), `spec ${s}`);
-      if (c.source) ok(existsSync(c.source), `source ${c.source}`);
+      c = cfg();
     } catch (err) {
       say(`· no workspace here (${err.message.split('.')[0]})`);
+      return;
+    }
+    say(`\nWorkspace ${c.ws} (${c.name}, ${c.spec.length ? 'guided' : 'unguided'}, environment ${c.environment})`);
+    for (const sp of c.spec) ok(existsSync(sp), `spec ${sp}`);
+    const src = sourceReport(c);
+    ok(src.ok, src.message);
+    const seed = typeof c.seed === 'string' ? c.seed : c.seed?.command;
+    ok(Boolean(seed), seed ? `seed command: ${seed} (runs before each hunt; skip with --no-seed)` : 'no "seed" command: hunts start from whatever data is there now');
+    const data = dataReport(c);
+    ok(data.ok, data.message);
+    const level = db.writeLevel(c);
+    say(`· database writes: ${level === 'off' ? 'off (read-only). Turn on with "db": { "write": "on" } or hunt --db-write' : level === 'local' ? 'local database only' : `on (capped, logged; never on production)`}`);
+    let app;
+    try {
+      app = await ensureApp(c, join(c.ws, 'sessions', 'doctor', 'app.log'));
+      ok(true, `app answers on ${c.url}`);
+      for (const l of await loginReport(c)) ok(l.ok, l.message);
+    } catch (err) {
+      ok(false, `app: ${err.message}`);
+    } finally {
+      await app?.stop();
     }
   },
 
@@ -259,7 +294,8 @@ const commands = {
     config.source = '../examples/acme-leave';
     config.spec = '../examples/acme-leave/docs/prd.md';
     config.db.file = 'acme-leave.db';
-    config.app = { ...config.app, cwd: '.', env: { ...config.app.env, ACME_DB: 'acme-leave.db', PORT: '4311' }, start: 'node ../examples/acme-leave/server.mjs --reset' };
+    config.app = { ...config.app, cwd: '.', env: { ...config.app.env, ACME_DB: 'acme-leave.db', PORT: '4311' }, start: 'node ../examples/acme-leave/server.mjs' };
+    config.seed = { command: 'node ../examples/acme-leave/seed.mjs', cwd: '.' };
     config.url = 'http://localhost:4311';
     writeJson(join(dir, CONFIG_FILE), config);
     opt.dir = dir;

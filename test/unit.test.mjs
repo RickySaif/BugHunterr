@@ -9,6 +9,7 @@ import * as db from '../src/db.mjs';
 import { check } from '../src/finish.mjs';
 import { buildPrompt } from '../src/prompt.mjs';
 import { buildBoard, fixPrompt } from '../src/board.mjs';
+import { sourceReport, dataReport, runSeed } from '../src/setup.mjs';
 
 function workspace(extra = {}) {
   const ws = mkdtempSync(join(tmpdir(), 'bh-'));
@@ -85,7 +86,40 @@ test('db write: off by default; when on, guarded, capped and logged', () => {
   assert.throws(() => db.write(cfg, { sql: "UPDATE items SET name = 'y'", table: 'items', ids: [1], maxRows: 2 }), /changed 3 rows/);
   assert.equal(db.read(cfg, "SELECT COUNT(*) AS n FROM items WHERE name = 'y'")[0].n, 0, 'the over-cap write was rolled back');
   const staging = loadConfig(workspace({ environment: 'staging', db: { engine: 'sqlite', file: 'app.db', write: 'local' } }));
-  assert.throws(() => db.write(staging, { sql: "UPDATE items SET name = 'x' WHERE id = 1", table: 'items', ids: [1] }), /only run when "environment" is "local"/);
+  assert.throws(() => db.write(staging, { sql: "UPDATE items SET name = 'x' WHERE id = 1", table: 'items', ids: [1] }), /only allows writes when "environment" is "local"/);
+});
+
+test('db write: "on" works on a shared environment, never on production; --db-write turns it on for one hunt', () => {
+  const sql = { sql: "UPDATE items SET name = 'q' WHERE id = 2", table: 'items', ids: [2] };
+  const staging = loadConfig(workspace({ environment: 'staging', db: { engine: 'sqlite', file: 'app.db', write: 'on' } }));
+  assert.equal(db.write(staging, sql)[0].name, 'q');
+  const prod = loadConfig(workspace({ environment: 'production', db: { engine: 'sqlite', file: 'app.db', write: 'on' } }));
+  assert.throws(() => db.write(prod, sql), /never run on production/);
+  const off = loadConfig(workspace());
+  assert.equal(db.writeLevel(off), 'off');
+  process.env.BH_DB_WRITE = '1';
+  try {
+    assert.equal(db.writeLevel(off), 'on');
+    assert.equal(db.write(off, sql)[0].name, 'q');
+  } finally {
+    delete process.env.BH_DB_WRITE;
+  }
+});
+
+test('setup: source and data reports, and the seed command', () => {
+  const ws = workspace();
+  const cfg = loadConfig(ws);
+  assert.match(sourceReport(cfg).message, /code file\(s\) in/);
+  assert.equal(sourceReport({ ...cfg, source: null }).ok, false);
+  const data = dataReport(cfg);
+  assert.match(data.message, /1 table\(s\), 3 row\(s\)/);
+  assert.equal(data.ok, false, 'three rows is a thin seed');
+  const seeded = loadConfig(workspace({ seed: { command: `node -e "require('fs').writeFileSync('seeded.txt','ok')"` } }));
+  assert.equal(runSeed(seeded, join(seeded.ws, 'sessions', 'r1', 'seed.log')), true);
+  assert.equal(readFileSync(join(seeded.ws, 'seeded.txt'), 'utf8'), 'ok');
+  const prodSeed = loadConfig(workspace({ environment: 'prod', seed: 'true' }));
+  assert.throws(() => runSeed(prodSeed, join(prodSeed.ws, 'seed.log')), /never runs on production/);
+  assert.equal(runSeed(cfg, join(ws, 'seed.log')), false, 'no seed configured');
 });
 
 test('check: the fixture bugs are valid; broken ones are reported', () => {
@@ -117,6 +151,10 @@ test('prompt: guided cites the spec; unguided asks for an inferred spec', () => 
   const unguided = buildPrompt(cfg, { ...base, mode: 'unguided' });
   assert.match(unguided, /UNGUIDED/);
   assert.match(unguided, /inferred-spec\.md/);
+  assert.match(guided, /Writes are off/);
+  const writes = buildPrompt(cfg, { ...base, mode: 'guided', dbWrite: 'on', seeded: true });
+  assert.match(writes, /Writes are \*\*on\*\*/);
+  assert.match(writes, /reset and filled by the seed command/);
 });
 
 test('board: one self-contained page with a fix prompt per bug', () => {

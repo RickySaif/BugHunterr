@@ -11,7 +11,7 @@ const ANSI = /\u001b\[[0-9;]*m/g;
 const require = createRequire(import.meta.url);
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function up(url) {
+export async function up(url) {
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(2000) });
     return res.status < 500;

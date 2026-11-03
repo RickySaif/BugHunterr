@@ -7,14 +7,53 @@
   "environment": "local",
   "minutes": 20,
   "accounts": {
-    "manager": { "user": "ana@acme.example", "password": "acme-demo", "note": "Ana, manager" },
-    "employee": { "user": "ben@acme.example", "password": "acme-demo", "note": "Ben, employee" },
-    "employee2": { "user": "cleo@acme.example", "password": "acme-demo", "note": "Cleo, employee" }
+    "manager": {
+      "user": "ana@acme.example",
+      "password": "acme-demo",
+      "note": "Ana, manager"
+    },
+    "employee": {
+      "user": "ben@acme.example",
+      "password": "acme-demo",
+      "note": "Ben, employee"
+    },
+    "employee2": {
+      "user": "cleo@acme.example",
+      "password": "acme-demo",
+      "note": "Cleo, employee"
+    }
   },
   "login": {
-    "api": { "method": "POST", "path": "/api/login", "body": { "email": "{user}", "password": "{password}" } },
-    "ui": { "path": "/", "user": "[data-testid=email]", "password": "[data-testid=password]", "submit": "[data-testid=login]", "loggedIn": "[data-testid=who]" }
+    "api": {
+      "method": "POST",
+      "path": "/api/login",
+      "body": {
+        "email": "{user}",
+        "password": "{password}"
+      }
+    },
+    "ui": {
+      "path": "/",
+      "user": "[data-testid=email]",
+      "password": "[data-testid=password]",
+      "submit": "[data-testid=login]",
+      "loggedIn": "[data-testid=who]"
+    }
   },
-  "db": { "engine": "sqlite", "file": "../acme-leave/data/acme-leave.db" },
-  "app": { "start": "node server.mjs --reset", "cwd": "../acme-leave", "health": "/health", "env": { "PORT": "4310" } }
+  "db": {
+    "engine": "sqlite",
+    "file": "../acme-leave/data/acme-leave.db"
+  },
+  "seed": {
+    "command": "node seed.mjs",
+    "cwd": "../acme-leave"
+  },
+  "app": {
+    "start": "node server.mjs",
+    "cwd": "../acme-leave",
+    "health": "/health",
+    "env": {
+      "PORT": "4310"
+    }
+  }
 }

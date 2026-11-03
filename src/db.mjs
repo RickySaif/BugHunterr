@@ -1,7 +1,7 @@
 // Database access for the hunt, with the safety rules built in.
 //   read(cfg, sql)    one SELECT/WITH statement, run in a read-only connection or transaction
-//   write(cfg, {...}) one INSERT/UPDATE/DELETE, only when bughunterr.json says "db": { "write": "local" } and the
-//                     environment is local; row cap, one transaction, before/after logged to the session ledger
+//   write(cfg, {...}) one INSERT/UPDATE/DELETE when writes are on ("db": { "write": "local" | "on" }, or hunt
+//                     --db-write); never on production; row cap, one transaction, before/after logged to the ledger
 // Engines: sqlite (built in), postgres (psql), mysql/mariadb (mysql). Passwords come from "$ENV_VAR" values.
 import { DatabaseSync } from 'node:sqlite';
 import { execFileSync } from 'node:child_process';
@@ -9,6 +9,18 @@ import { existsSync } from 'node:fs';
 import { BhError, secret, appendJsonl } from './config.mjs';
 
 export class DbSafetyError extends BhError {}
+
+export const isProd = (env) => /^prod/i.test(String(env || ''));
+
+// off (default) · local: only when environment is local and the database is on this machine · on: any environment but production.
+// BH_DB_WRITE=1 (set by hunt --db-write) turns writes on for one hunt.
+export function writeLevel(cfg) {
+  const w = cfg.db?.write;
+  if (process.env.BH_DB_WRITE === '1' && cfg.db) return 'on';
+  if (w === true || w === 'on') return 'on';
+  if (w === 'local') return 'local';
+  return 'off';
+}
 
 const quote = (v) => (v === null || v === undefined ? 'NULL' : typeof v === 'number' ? String(v) : `'${String(v).replace(/'/g, "''")}'`);
 
@@ -61,12 +73,14 @@ export function read(cfg, sql) {
 // One guarded write, for set-up the UI cannot do (e.g. move a date). `ids` are the primary keys it may touch.
 export function write(cfg, { sql, table, ids, why, ledger, maxRows = 20, idColumn = 'id' }) {
   const c = conf(cfg);
-  if (c.write !== 'local') throw new DbSafetyError('db writes are off. Set "db": { "write": "local" } in bughunterr.json to allow them on a local database');
-  if (cfg.environment !== 'local') throw new DbSafetyError(`db writes only run when "environment" is "local" (it is "${cfg.environment}")`);
+  const level = writeLevel(cfg);
+  if (level === 'off') throw new DbSafetyError('db writes are off. Turn them on with "db": { "write": "on" } in bughunterr.json, or hunt --db-write');
+  if (isProd(cfg.environment)) throw new DbSafetyError(`db writes never run on production (environment "${cfg.environment}")`);
+  if (level === 'local' && cfg.environment !== 'local') throw new DbSafetyError(`"write": "local" only allows writes when "environment" is "local" (it is "${cfg.environment}"); use "write": "on" for ${cfg.environment}`);
   if (!table || !/^\w+$/.test(table) || !Array.isArray(ids) || !ids.length) throw new DbSafetyError('a write needs --table and --ids (the rows it touches)');
   if (ids.length > maxRows) throw new DbSafetyError(`the write touches ${ids.length} rows; the cap is ${maxRows}`);
   if (!single(sql) || !/^\s*(insert|update|delete)\b/i.test(sql)) throw new DbSafetyError('a write is one INSERT, UPDATE or DELETE statement');
-  if (c.engine !== 'sqlite' && !['localhost', '127.0.0.1', '::1', undefined].includes(c.host)) throw new DbSafetyError(`db host ${c.host} is not this machine`);
+  if (level === 'local' && c.engine !== 'sqlite' && !['localhost', '127.0.0.1', '::1', undefined].includes(c.host)) throw new DbSafetyError(`db host ${c.host} is not this machine; use "write": "on" for a shared test database`);
   const select = `SELECT * FROM ${table} WHERE ${idColumn} IN (${ids.map(quote).join(', ')})`;
   let before, after;
   if (c.engine === 'sqlite') {

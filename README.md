@@ -50,6 +50,52 @@ Acme Leave has three seeded bugs. These are the results of real hunts on it (3 N
 
 The Claude Code run is committed in [`examples/workspace`](examples/workspace).
 
+## Before you hunt
+
+A hunt is only as good as what the agent can see. Prepare three things.
+
+**1. The source code of the app**, as a local folder (`"source"`). Clone the branch that is deployed where you
+test, so the code matches what runs:
+
+```sh
+git clone --branch main https://github.com/acme/leave.git ~/code/acme-leave
+```
+
+The agent only reads it: it finds the rules in the code, compares a check in one place with its missing sibling
+somewhere else, and names the file and function of each bug. Without it, bugs have no "where", and unguided hunts
+lose their best evidence. BugHunterr never edits this folder, so a dedicated clone is the safe choice.
+
+**2. A good seed**: a test database that looks like real use, and a command that resets it (`"seed"`). The agent
+can only test what has data. A good seed has:
+
+- one test account per role, each able to log in (these are the `"accounts"`)
+- several users per role, so lists, search and "someone else's record" can be tested
+- records in every state the app knows (for example pending, approved, rejected, cancelled), including old,
+  current and future dates
+- edge values that real data has: long names, accents, zero and large amounts, the end of a month and a year
+- fictional people only, never a copy of production
+
+A command that resets the database to this state before each hunt makes runs repeatable. BugHunterr runs it
+before it starts the app (skip it with `--no-seed`), never on production. The demo app has one to copy:
+[`examples/acme-leave/seed.mjs`](examples/acme-leave/seed.mjs).
+
+**3. Database access**, optional but recommended (`"db"`). With it the agent confirms each bug in the stored state,
+not only in what the screen shows. It is **read-only** by default. Writes help the agent set up states the UI
+cannot reach quickly (a record in a rare state, a date moved to the end of the year), so you can turn them on:
+
+| `"db": { "write": … }` | Writes allowed |
+|---|---|
+| `"off"` (default) | none: one `SELECT` at a time, in a read-only connection or transaction |
+| `"local"` | only when `"environment"` is `"local"` and the database is on this machine |
+| `"on"` | in any environment except production |
+
+`bughunterr hunt --db-write` turns writes on for one hunt. Every write is one statement, at most 20 rows, in a
+transaction, with the rows before and after logged to the session. Production is never written.
+
+Then run **`bughunterr doctor`**. Besides the tools, it checks that the source folder has code (and which commit),
+that the seed command is set, that the database has data (it warns when the seed looks thin), whether writes are on,
+and that every test account can log in.
+
 ## Hunt your own app
 
 You need [Claude Code](https://code.claude.com) (signed in) or [Codex](https://github.com/openai/codex). No API key:
@@ -57,10 +103,11 @@ BugHunterr uses your own CLI login.
 
 ```sh
 npm install -g github:RickySaif/BugHunterr && npx playwright install chromium
-bughunterr init my-hunt --url http://localhost:3000 --source ~/code/my-app --spec ~/code/my-app/docs/prd.md --prefix MA
+bughunterr init my-hunt --url http://localhost:3000 --source ~/code/my-app --spec ~/code/my-app/docs/prd.md --prefix MA \
+  --seed-command "npm run db:seed"
 cd my-hunt
 # edit bughunterr.json: test accounts, login, database, how to start the app (see below)
-bughunterr doctor
+bughunterr doctor                      # source code, seed data, database, logins
 bughunterr hunt                        # guided by the spec, Claude Code, 20 minutes
 ```
 
@@ -71,10 +118,12 @@ bughunterr hunt                        # guided by the spec, Claude Code, 20 min
 | `bughunterr hunt --agent codex` | use Codex instead of Claude Code |
 | `bughunterr hunt --minutes 45 --model opus` | longer time box, a specific model |
 | `bughunterr hunt --headed` | watch the agent's browser |
+| `bughunterr hunt --db-write` | allow guarded database writes for this hunt (never on production) |
+| `bughunterr hunt --no-seed` | keep the current data instead of running the seed command |
 
 A hunt goes like this:
 
-1. **Start**: BugHunterr starts the app (`app.start`) unless it already answers, and saves its output to
+1. **Start**: BugHunterr runs the seed command (if set), then starts the app (`app.start`) unless it already answers, and saves its output to
    `sessions/<run>/app.log` so the agent can see server errors.
 2. **Hunt** (the agent, time-boxed): learns the rules (guided: `rules.md` from your spec; unguided: an
    `inferred-spec.md` with the evidence for each rule), writes charters, maps each feature in the browser as each
@@ -109,10 +158,11 @@ Bugs found earlier are passed to the next hunt, so they are not reported twice, 
     "ui":  { "path": "/", "user": "[data-testid=email]", "password": "[data-testid=password]",
              "submit": "[data-testid=login]", "loggedIn": "[data-testid=who]" }
   },
-  "db":  { "engine": "sqlite", "file": "../acme-leave/data/acme-leave.db" },
+  "db":  { "engine": "sqlite", "file": "../acme-leave/data/acme-leave.db", "write": "off" },
          // or { "engine": "postgres", "host": "localhost", "port": 5432, "name": "app", "user": "$PGUSER", "password": "$PGPASSWORD" }
-         // add "write": "local" to allow guarded set-up writes on a local database
-  "app": { "start": "node server.mjs --reset", "cwd": "../acme-leave", "health": "/health", "env": { "PORT": "4310" } }
+         // "write": "off" | "local" | "on" (see "Before you hunt")
+  "seed": { "command": "node seed.mjs", "cwd": "../acme-leave" },   // resets and fills the test database
+  "app": { "start": "node server.mjs", "cwd": "../acme-leave", "health": "/health", "env": { "PORT": "4310" } }
 }
 ```
 
@@ -125,7 +175,7 @@ bughunterr record [ID…]       record captioned videos from repro/<ID>.repro.mj
 bughunterr board              rebuild board/index.html
 bughunterr serve              serve the board on http://localhost:4800
 bughunterr db "SELECT …"      read-only query, JSON out
-bughunterr doctor             check Node, Claude Code, Codex, Chromium, ffmpeg
+bughunterr doctor             check the tools, the source code, the seed data, database writes and every login
 ```
 
 ## What the agent may and may not do
@@ -134,8 +184,9 @@ bughunterr doctor             check Node, Claude Code, Codex, Chromium, ffmpeg
 - **Source code**: read only. Claude Code runs with edits allowed only in the workspace and denied on the source
   folder; Codex runs in its `workspace-write` sandbox, so it can write only the workspace.
 - **Database**: `bughunterr db` accepts one `SELECT` at a time, in a read-only connection (sqlite) or read-only
-  transaction (postgres, mysql). Writes are off unless `"write": "local"` *and* `"environment": "local"`; then one
-  statement at a time, with a row cap, in a transaction, with before and after logged to the session ledger.
+  transaction (postgres, mysql). Writes are off unless you turn them on (`"write": "local"` or `"on"`, or
+  `--db-write`); then one statement at a time, at most 20 rows, in a transaction, with before and after logged to the
+  session ledger. Never on production, and never schema changes.
 - **Shell**: yes, because a tester needs curl, logs and scripts. `git push`, `rm -rf`, web search and web fetch are
   blocked for Claude Code. `--yolo` lifts every limit: use it only in a throwaway machine or container.
 - Text from pages, the database and logs is treated as data, not instructions.
